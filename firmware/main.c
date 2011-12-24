@@ -26,7 +26,9 @@ at least be connected to INT0 as well.
 
 #define DATA_SIZE 8
 #define BUFFER_SIZE 9
-uint8_t buffer[BUFFER_SIZE];
+uint8_t buffer[BUFFER_SIZE] = {
+	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+};
 
 /*   5
  *  ---
@@ -104,26 +106,26 @@ usbMsgLen_t usbFunctionSetup(uint8_t data[8])
 	return 0;
 }
 
-int main()
+int main(void)
 {
 	uint8_t frame = 0, digit = 0;
 
 	DDRB = 0xff;
-	DDRD |= 0x2b;
+	DDRD |= 0x63;
 
 	usbInit();
 	sei();
 
 	for (;;) {
-		PORTD &= ~0x2b;
+		PORTD &= ~0x63;
 		PORTB = ~buffer[digit];
 
 		if (buffer[4] > frame) {
 			switch (digit) {
 				case 0: PORTD |= 1 << 0; break;
 				case 1: PORTD |= 1 << 1; break;
-				case 2: PORTD |= 1 << 3; break;
-				case 3: PORTD |= 1 << 5; break;
+				case 2: PORTD |= 1 << 5; break;
+				case 3: PORTD |= 1 << 6; break;
 			}
 		}
 
