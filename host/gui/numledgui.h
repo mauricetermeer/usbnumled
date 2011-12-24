@@ -222,7 +222,7 @@ private:
 
 	void write_state()
 	{
-		numled_write(handle, state);
+		numled_write(handle, &state);
 	}
 
 	QString exdot_string(const QString &str)

@@ -8,6 +8,10 @@
 
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
+
 typedef void *NumledHandle;
 
 typedef struct NumledState {
@@ -16,9 +20,13 @@ typedef struct NumledState {
 } NumledState;
 
 NumledHandle numled_open(wchar_t *serial);
-int numled_write(NumledHandle handle, const NumledState &state);
+int numled_write(NumledHandle handle, const NumledState *state);
 NumledState numled_read(NumledHandle handle, int *result);
 void numled_close(NumledHandle handle);
+
+#ifdef __cplusplus
+} // extern "C"
+#endif // __cplusplus
 
 #endif // NUMLED_H
 

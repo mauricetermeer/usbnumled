@@ -72,7 +72,7 @@ int main(int argc, char* argv[])
 			state.brightness = value;
 		}
 
-		int result = numled_write(handle, state);
+		int result = numled_write(handle, &state);
 
 		if (result < 0) {
 			printf("Could not write to device.\n");

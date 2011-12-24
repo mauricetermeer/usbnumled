@@ -19,15 +19,15 @@ NumledHandle numled_open(wchar_t *serial)
 	return (NumledHandle)handle;
 }
 
-int numled_write(NumledHandle handle, const NumledState &state)
+int numled_write(NumledHandle handle, const NumledState *state)
 {
 	uint8_t buffer[BUFFER_SIZE];
 	buffer[0] = 0x01;
-	buffer[1] = state.digits[0];
-	buffer[2] = state.digits[1];
-	buffer[3] = state.digits[2];
-	buffer[4] = state.digits[3];
-	buffer[5] = state.brightness;
+	buffer[1] = state->digits[0];
+	buffer[2] = state->digits[1];
+	buffer[3] = state->digits[2];
+	buffer[4] = state->digits[3];
+	buffer[5] = state->brightness;
 	return hid_send_feature_report(
 		(hid_device*)handle, buffer, BUFFER_SIZE
 	);
