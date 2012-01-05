@@ -6,6 +6,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 #include <wchar.h>
 
 #include "hidapi.h"
@@ -22,7 +23,7 @@ NumledHandle numled_open(wchar_t *serial)
 int numled_write(NumledHandle handle, const NumledState *state)
 {
 	uint8_t buffer[BUFFER_SIZE];
-	buffer[0] = 0x01;
+	memset(buffer, 0, sizeof(buffer));
 	buffer[1] = state->digits[0];
 	buffer[2] = state->digits[1];
 	buffer[3] = state->digits[2];
@@ -37,6 +38,8 @@ NumledState numled_read(NumledHandle handle, int *result)
 {
 	NumledState state;
 	uint8_t buffer[BUFFER_SIZE];
+	memset(buffer, 0, sizeof(buffer));
+
 	int bytes_read =
 		hid_get_feature_report(
 			(hid_device*)handle, buffer, BUFFER_SIZE
@@ -48,6 +51,12 @@ NumledState numled_read(NumledHandle handle, int *result)
 		state.digits[2] = buffer[3];
 		state.digits[3] = buffer[4];
 		state.brightness = buffer[5];
+	} else {
+		state.digits[0] = 0;
+		state.digits[1] = 0;
+		state.digits[2] = 0;
+		state.digits[3] = 0;
+		state.brightness = 0;
 	}
 
 	if (result != NULL) *result = bytes_read;

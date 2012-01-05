@@ -24,40 +24,6 @@ at least be connected to INT0 as well.
 #include <avr/pgmspace.h>
 #include "usbdrv.h"
 
-#define DATA_SIZE 8
-#define BUFFER_SIZE 9
-uint8_t buffer[BUFFER_SIZE] = {
-	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-};
-
-/*   5
- *  ---
- * |674|
- *  ---
- * |321|0
- *  --- .
- */
-
-/*const uint8_t font[] = {
-	//-------------76543210
-	0x7e, // 0 = 0b01111110
-	0x12, // 1 = 0b00010010
-	0xbc, // 2 = 0b10111100
-	0xb6, // 3 = 0b10110110
-	0xd2, // 4 = 0b11010010
-	0xe6, // 5 = 0b11100110
-	0xee, // 6 = 0b11101110
-	0x32, // 7 = 0b00110010
-	0xfe, // 8 = 0b11111110
-	0xf6, // 9 = 0b11110110
-	0x01, // . = 0b00000001
-	0x01, // . = 0b00000001
-	0x01, // . = 0b00000001
-	0x01, // . = 0b00000001
-	0x01, // . = 0b00000001
-	0x01, // . = 0b00000001
-};*/
-
 PROGMEM const char usbHidReportDescriptor[] = { /* USB report descriptor */
 	0x06, 0x00, 0xff,			// USAGE_PAGE (Generic Desktop)
 	0x09, 0x01,				// USAGE (Vendor Usage 1)
@@ -71,20 +37,25 @@ PROGMEM const char usbHidReportDescriptor[] = { /* USB report descriptor */
 	0xc0					// END_COLLECTION
 };
 
+#define BUFFER_SIZE 8
+static uint8_t buffer[BUFFER_SIZE] = {
+	0, 0, 0, 0, 0, 0, 0, 0
+};
+
 static uint8_t writeIndex;
 
 uint8_t usbFunctionWrite(uint8_t *data, uint8_t len)
 {
 	uint8_t i;
 
-	if (writeIndex == DATA_SIZE) return 1;
-	if (len > DATA_SIZE - writeIndex) len = DATA_SIZE - writeIndex;
+	if (writeIndex == BUFFER_SIZE) return 1;
+	if (len > BUFFER_SIZE - writeIndex) len = BUFFER_SIZE - writeIndex;
 
-	for (i = writeIndex == 0 ? 1 : 0; i < len; ++i) {
+	for (i = 0; i < len; ++i) {
 		buffer[writeIndex++] = data[i];
 	}
 
-	return writeIndex == DATA_SIZE;
+	return writeIndex == BUFFER_SIZE;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -110,14 +81,14 @@ int main(void)
 {
 	uint8_t frame = 0, digit = 0;
 
-	DDRB = 0xff;
-	DDRD |= 0x63;
-
 	usbInit();
 
 	usbDeviceDisconnect();
 	_delay_ms(250);
 	usbDeviceConnect();
+
+	DDRB = 0xff;
+	DDRD |= 0x63;
 
 	sei();
 
