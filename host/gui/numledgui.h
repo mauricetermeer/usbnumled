@@ -1,10 +1,21 @@
+/*
+ * USBNumLED GUI
+ * © 2012 Maurice Termeer
+ */
+
 #include <cmath>
 
 #include <QCheckBox>
+#include <QCloseEvent>
+#include <QDialog>
+#include <QHttp>
+#include <QMenu>
 #include <QMessageBox>
+#include <QSystemTrayIcon>
+#include <QTime>
 #include <QTimer>
+#include <QUrl>
 #include <QWidget>
-#include <QtNetwork>
 
 #include "numled.h"
 #include "ui_numled_main.h"
@@ -44,13 +55,13 @@ static uint8_t led_font[] = {
 	0x00, /* 124 */ 0x00, /* 125 */ 0x00, /* 126 */ 0x00, /* 127 */
 };
 
-class NumledGuiWindow : public QWidget
+class NumledGuiWindow : public QDialog
 {
 	Q_OBJECT
 
 public:
 	NumledGuiWindow(QWidget *parent = NULL)
-		: QWidget(parent), handle(NULL), offset(0), timer(NULL)
+		: QDialog(parent), handle(NULL), offset(0), timer(NULL)
 	{
 		ui.setupUi(this);
 		http = new QHttp(this);
@@ -59,12 +70,58 @@ public:
 		set_connection_state(false);
 		ui.comboBoxContent->setCurrentIndex(0);
 		ui.stackedWidget->setCurrentIndex(0);
+
+		menu = new QMenu(this);
+		QAction *actionMode0 = new QAction(tr("&Raw"), this);
+		connect(actionMode0, SIGNAL(triggered()), this, SLOT(setMode0()));
+		menu->addAction(actionMode0);
+		QAction *actionMode1 = new QAction(tr("&Text"), this);
+		connect(actionMode1, SIGNAL(triggered()), this, SLOT(setMode1()));
+		menu->addAction(actionMode1);
+		QAction *actionMode2 = new QAction(tr("&Stock"), this);
+		connect(actionMode2, SIGNAL(triggered()), this, SLOT(setMode2()));
+		menu->addAction(actionMode2);
+		QAction *actionMode3 = new QAction(tr("T&ime"), this);
+		connect(actionMode3, SIGNAL(triggered()), this, SLOT(setMode3()));
+		menu->addAction(actionMode3);
+
+		menu->addSeparator();
+
+		QAction *actionQuit = new QAction(tr("&Quit"), this);
+		connect(actionQuit, SIGNAL(triggered()), qApp, SLOT(quit()));
+		menu->addAction(actionQuit);
+
+		tray = new QSystemTrayIcon(this);
+		tray->setIcon(QIcon(":/icon.svg"));
+		tray->setToolTip("USBNumLED");
+		tray->setContextMenu(menu);
+
+		connect(tray, SIGNAL(activated(QSystemTrayIcon::ActivationReason)),
+			this, SLOT(onTrayActivated(QSystemTrayIcon::ActivationReason)));
+
+		tray->show();
+
+		setWindowIcon(QIcon(":/icon.svg"));
+		setWindowTitle("USBNumLED");
 	}
 
 	~NumledGuiWindow()
 	{
 		if (handle != NULL) {
 			numled_close(handle);
+		}
+
+		if (timer != NULL) delete timer;
+		delete http;
+		delete tray;
+	}
+
+protected:
+	void closeEvent(QCloseEvent *event)
+	{
+		if (tray->isVisible()) {
+			hide();
+			event->ignore();
 		}
 	}
 
@@ -273,6 +330,35 @@ private slots:
 		ui.labelTime->setText(QString("Current time: %1").arg(time.toString("HH:mm:ss")));
 	}
 
+	void onTrayActivated(QSystemTrayIcon::ActivationReason reason)
+	{
+		if (reason == QSystemTrayIcon::Context) {
+			menu->show();
+		} else if (reason == QSystemTrayIcon::DoubleClick) {
+			show();
+		}
+	}
+
+	void setMode0()
+	{
+		ui.comboBoxContent->setCurrentIndex(0);
+	}
+
+	void setMode1()
+	{
+		ui.comboBoxContent->setCurrentIndex(1);
+	}
+
+	void setMode2()
+	{
+		ui.comboBoxContent->setCurrentIndex(2);
+	}
+
+	void setMode3()
+	{
+		ui.comboBoxContent->setCurrentIndex(3);
+	}
+
 private:
 	void set_connection_state(bool connected)
 	{
@@ -379,5 +465,7 @@ private:
 	QTimer *timer;
 	QHttp *http;
 	Ui::Form ui;
+	QMenu *menu;
+	QSystemTrayIcon *tray;
 };
 
