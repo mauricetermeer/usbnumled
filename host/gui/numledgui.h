@@ -67,21 +67,25 @@ public:
 		http = new QHttp(this);
 		connect(http, SIGNAL(requestFinished(int,bool)),
 			this, SLOT(stockRequestFinished(int,bool)));
-		set_connection_state(false);
 		ui.comboBoxContent->setCurrentIndex(0);
 		ui.stackedWidget->setCurrentIndex(0);
 
 		menu = new QMenu(this);
-		QAction *actionMode0 = new QAction(tr("&Raw"), this);
+		actionMode0 = new QAction(tr("&Raw"), this);
+		actionMode0->setCheckable(true);
+		actionMode0->setChecked(true);
 		connect(actionMode0, SIGNAL(triggered()), this, SLOT(setMode0()));
 		menu->addAction(actionMode0);
-		QAction *actionMode1 = new QAction(tr("&Text"), this);
+		actionMode1 = new QAction(tr("&Text"), this);
+		actionMode1->setCheckable(true);
 		connect(actionMode1, SIGNAL(triggered()), this, SLOT(setMode1()));
 		menu->addAction(actionMode1);
-		QAction *actionMode2 = new QAction(tr("&Stock"), this);
+		actionMode2 = new QAction(tr("&Stock"), this);
+		actionMode2->setCheckable(true);
 		connect(actionMode2, SIGNAL(triggered()), this, SLOT(setMode2()));
 		menu->addAction(actionMode2);
-		QAction *actionMode3 = new QAction(tr("T&ime"), this);
+		actionMode3 = new QAction(tr("T&ime"), this);
+		actionMode3->setCheckable(true);
 		connect(actionMode3, SIGNAL(triggered()), this, SLOT(setMode3()));
 		menu->addAction(actionMode3);
 
@@ -100,6 +104,8 @@ public:
 			this, SLOT(onTrayActivated(QSystemTrayIcon::ActivationReason)));
 
 		tray->show();
+
+		set_connection_state(false);
 
 		setWindowIcon(QIcon(":/icon.svg"));
 		setWindowTitle("USBNumLED");
@@ -150,12 +156,25 @@ private slots:
 	void on_comboBoxContent_currentIndexChanged(int index)
 	{
 		ui.stackedWidget->setCurrentIndex(index);
-		if (handle == NULL) return;
+
+		actionMode0->setChecked(false);
+		actionMode1->setChecked(false);
+		actionMode2->setChecked(false);
+		actionMode3->setChecked(false);
+
+		switch (index) {
+			case 0: actionMode0->setChecked(true); break;
+			case 1: actionMode1->setChecked(true); break;
+			case 2: actionMode2->setChecked(true); break;
+			case 3: actionMode3->setChecked(true); break;
+		};
 
 		if (timer != NULL) {
 			delete timer;
 			timer = NULL;
 		}
+
+		if (handle == NULL) return;
 
 		if (index == 0) {
 			read_state();
@@ -375,6 +394,10 @@ private:
 		ui.lineEditStock->setEnabled(connected);
 		ui.pushButtonUpdateStock->setEnabled(connected);
 		ui.lineEditTimeOffset->setEnabled(connected);
+		actionMode0->setEnabled(connected);
+		actionMode1->setEnabled(connected);
+		actionMode2->setEnabled(connected);
+		actionMode3->setEnabled(connected);
 	}
 
 	void read_state()
@@ -465,6 +488,10 @@ private:
 	QTimer *timer;
 	QHttp *http;
 	Ui::Form ui;
+	QAction *actionMode0;
+	QAction *actionMode1;
+	QAction *actionMode2;
+	QAction *actionMode3;
 	QMenu *menu;
 	QSystemTrayIcon *tray;
 };
