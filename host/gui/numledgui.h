@@ -478,6 +478,7 @@ private:
 
 	void get_stock_quote(const QString &exchange, const QString &stock)
 	{
+		http->setProxy(ui.lineEditProxyHost->text(), ui.lineEditProxyPort->text().toInt());
 		http->setHost("finance.google.com");
 		http->get(QString("/finance/info?client=ig&q=%1:%2").arg(exchange).arg(stock));
 	}
