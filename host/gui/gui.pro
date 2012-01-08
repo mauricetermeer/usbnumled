@@ -2,10 +2,14 @@ TEMPLATE = app
 TARGET = 
 DEPENDPATH += .
 INCLUDEPATH += . ../api /usr/include/libusb-1.0
+unix { INCLUDEPATH += /usr/include/libusb-1.0 }
 QT += network
 
 HEADERS += numledgui.h
-SOURCES += ../api/hid-libusb.c ../api/numled.c numledgui.cpp
+SOURCES += ../api/numled.c numledgui.cpp
+unix { SOURCES += ../api/hid-libusb.c }
+win32 { SOURCES += ../api/hid.c }
 FORMS += numled_main.ui
-LIBS += -lrt -lusb-1.0 -ludev
+unix { LIBS += -lrt -lusb-1.0 -ludev }
+win32 { LIBS += setupapi }
 RESOURCES += numled.qrc
