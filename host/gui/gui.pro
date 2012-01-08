@@ -2,6 +2,7 @@ TEMPLATE = app
 TARGET = 
 DEPENDPATH += .
 INCLUDEPATH += . ../api /usr/include/libusb-1.0
+QT += network
 
 HEADERS += numledgui.h
 SOURCES += ../api/hid-libusb.c ../api/numled.c numledgui.cpp

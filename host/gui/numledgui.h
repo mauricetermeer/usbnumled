@@ -4,6 +4,7 @@
 #include <QMessageBox>
 #include <QTimer>
 #include <QWidget>
+#include <QtNetwork>
 
 #include "numled.h"
 #include "ui_numled_main.h"
@@ -49,13 +50,15 @@ class NumledGuiWindow : public QWidget
 
 public:
 	NumledGuiWindow(QWidget *parent = NULL)
-		: QWidget(parent), handle(NULL), offset(0)
+		: QWidget(parent), handle(NULL), offset(0), timer(NULL)
 	{
 		ui.setupUi(this);
+		http = new QHttp(this);
+		connect(http, SIGNAL(requestFinished(int,bool)),
+			this, SLOT(stockRequestFinished(int,bool)));
 		set_connection_state(false);
-		timer = new QTimer(this);
-		connect(timer, SIGNAL(timeout()), this, SLOT(timerTimeout()));
-		timer->start(10000 / ui.horizontalSliderSpeed->value());
+		ui.comboBoxContent->setCurrentIndex(0);
+		ui.stackedWidget->setCurrentIndex(0);
 	}
 
 	~NumledGuiWindow()
@@ -84,6 +87,45 @@ private slots:
 			numled_close(handle);
 			handle = NULL;
 			set_connection_state(false);
+		}
+	}
+
+	void on_comboBoxContent_currentIndexChanged(int index)
+	{
+		ui.stackedWidget->setCurrentIndex(index);
+		if (handle == NULL) return;
+
+		if (timer != NULL) {
+			delete timer;
+			timer = NULL;
+		}
+
+		if (index == 0) {
+			read_state();
+		} else if (index == 1) {
+			timer = new QTimer(this);
+			connect(timer, SIGNAL(timeout()), this, SLOT(timerText()));
+			timer->start(10000 / ui.horizontalSliderSpeed->value());
+			timerText();
+		} else if (index == 2) {
+			timer = new QTimer(this);
+			connect(timer, SIGNAL(timeout()), this, SLOT(timerStock()));
+			timer->start(15 * 60 * 1000);
+			timerStock();
+		} else if (index == 3) {
+			timer = new QTimer(this);
+			connect(timer, SIGNAL(timeout()), this, SLOT(timerTime()));
+			timer->start(1000);
+			timerTime();
+		}
+	}
+
+	void on_horizontalSliderBrightness_valueChanged(int value)
+	{
+		int newBrightness = int(255.0f * powf(float(value) / 255.0f, 2.2f));
+		if (state.brightness != newBrightness) {
+			state.brightness = newBrightness;
+			write_state();
 		}
 	}
 
@@ -131,63 +173,122 @@ private slots:
 		}
 	}
 
-	void on_horizontalSliderBrightness_valueChanged(int value)
-	{
-		int newBrightness = int(255.0f * powf(float(value) / 255.0f, 2.2f));
-		if (state.brightness != newBrightness) {
-			state.brightness = newBrightness;
-			write_state();
-		}
-	}
-
-	void on_checkBoxText_stateChanged(int state)
-	{
-		ui.lineEditText->setEnabled(state == Qt::Checked);
-		ui.horizontalSliderSpeed->setEnabled(state == Qt::Checked);
-	}
-
 	void on_horizontalSliderSpeed_valueChanged(int value)
 	{
 		timer->setInterval(1000 - int(1000 * powf(value / 1000.0f, 0.25f)));
 	}
 
-	void timerTimeout()
+	void on_lineEditExchange_textChanged(const QString &text)
 	{
-		if (handle == NULL || !ui.checkBoxText->isChecked()) return;
+		Q_UNUSED(text);
+		timerStock();
+	}
 
-		QString text = exdot_string(ui.lineEditText->text().toUpper());
+	void on_lineEditStock_textChanged(const QString &text)
+	{
+		Q_UNUSED(text);
+		timerStock();
+	}
 
-		if (text.length() <= 8) {
-			offset = 0;
+	void on_pushButtonUpdateStock_clicked()
+	{
+		timerStock();
+	}
+
+	void on_lineEditTimeOffset_textChanged(const QString &text)
+	{
+		Q_UNUSED(text);
+		timerTime();
+	}
+
+	void timerText()
+	{
+		if (handle == NULL) return;
+		set_text(ui.lineEditText->text());
+	}
+
+	void timerStock()
+	{
+		if (handle == NULL) return;
+
+		const QString exchange = ui.lineEditExchange->text();
+		const QString stock = ui.lineEditStock->text();
+		get_stock_quote(exchange, stock);
+	}
+
+	void stockRequestFinished(int id, bool error)
+	{
+		Q_UNUSED(id);
+
+		if (!error) {
+			QString data(http->readAll());
+			data = data.remove("\n");
+			QRegExp re("\\/\\/\\s*\\[\\s*\\{\\s*(\\\"([\\w.]+)\\\"\\s*:\\s*\\\"([\\w.,:\\-\\s]+)\\\"\\s*,?\\s*)+\\}\\s*\\]");
+
+			if (re.exactMatch(data)) {
+				data = data.remove(QRegExp("[\\/\\[\\]\\{\\}]"));
+				QStringList tokens = data.split(",");
+
+				QMap<QString,QString> map;
+				for (int i = 0; i < tokens.count(); ++i) {
+					QRegExp ret("\\s*\\\"([\\w.]+)\\\"\\s*:\\s*\\\"([\\w.,:\\-\\s]+)\\\"\\s*");
+					if (ret.exactMatch(tokens[i])) {
+						map[ret.cap(1)] = ret.cap(2);
+					}
+				}
+
+				QString value = map["l"];
+				set_text(value);
+
+				QString time = QTime::currentTime().toString("H:mm:ss");
+				QString log = QString("%1: Stock value %2").arg(time).arg(value);
+				ui.labelStockStatus->setText(log);
+			} else {
+				QString time = QTime::currentTime().toString("H:mm:ss");
+				QString log = QString("%1: Invalid server response\n%2").arg(time).arg(data);
+				ui.labelStockStatus->setText(log);
+			}
 		} else {
-			offset = (offset + 1) % (text.length() / 2);
+			QString time = QTime::currentTime().toString("H:mm:ss");
+			QString log = QString("%1: Error getting stock quote: %2").arg(time).arg(http->errorString());
+			ui.labelStockStatus->setText(log);
+		}
+	}
+
+	void timerTime()
+	{
+		if (handle == NULL) return;
+
+		QTime time = QTime::currentTime();
+		time = time.addSecs(ui.lineEditTimeOffset->text().toInt());
+
+		QString format("HHmm");
+
+		if (QTime::currentTime().second() % 2 == 0) {
+			format = "HH.mm";
 		}
 
-		if (text.length() < 8) text = (QString("        ") + text).right(8);
+		set_text(time.toString(format));
 
-		QByteArray lineLatin1 = (text + text).mid(2 * offset, 8).toLatin1();
-		const char *lineAscii = lineLatin1.data();
-
-		for (int i = 0; i < 4; ++i) {
-			state.digits[i] = led_font[lineAscii[2 * i] & 0x7f] | (lineAscii[2 * i + 1] == '.' ? 0x40 : 0);
-		}
-
-		update_state_ui();
-		write_state();
+		ui.labelTime->setText(QString("Current time: %1").arg(time.toString("HH:mm:ss")));
 	}
 
 private:
 	void set_connection_state(bool connected)
 	{
 		ui.pushButtonConnect->setText(connected ? "Disconnect" : "Connect");
+		ui.comboBoxContent->setEnabled(connected);
+		ui.horizontalSliderBrightness->setEnabled(connected);
 		ui.lineEdit0->setEnabled(connected);
 		ui.lineEdit1->setEnabled(connected);
 		ui.lineEdit2->setEnabled(connected);
 		ui.lineEdit3->setEnabled(connected);
-		ui.horizontalSliderBrightness->setEnabled(connected);
-		ui.checkBoxText->setEnabled(connected);
 		ui.lineEditText->setEnabled(connected);
 		ui.horizontalSliderSpeed->setEnabled(connected);
+		ui.lineEditExchange->setEnabled(connected);
+		ui.lineEditStock->setEnabled(connected);
+		ui.pushButtonUpdateStock->setEnabled(connected);
+		ui.lineEditTimeOffset->setEnabled(connected);
 	}
 
 	void read_state()
@@ -243,10 +344,40 @@ private:
 		return result;
 	}
 
+	void set_text(const QString &rtext)
+	{
+		QString text = exdot_string(rtext.toUpper());
+
+		if (text.length() <= 8) {
+			offset = 0;
+		} else {
+			offset = (offset + 1) % (text.length() / 2);
+		}
+
+		if (text.length() < 8) text = (QString("        ") + text).right(8);
+		text = (text + text).mid(2 * offset, 8);
+
+		QByteArray textLatin1 = text.toLatin1();
+		const char *textAscii = textLatin1.data();
+
+		for (int i = 0; i < 4; ++i) {
+			state.digits[i] = led_font[textAscii[2 * i] & 0x7f] | (textAscii[2 * i + 1] == '.' ? 0x40 : 0);
+		}
+
+		write_state();
+	}
+
+	void get_stock_quote(const QString &exchange, const QString &stock)
+	{
+		http->setHost("finance.google.com");
+		http->get(QString("/finance/info?client=ig&q=%1:%2").arg(exchange).arg(stock));
+	}
+
 	NumledHandle handle;
 	NumledState state;
 	int offset;
 	QTimer *timer;
+	QHttp *http;
 	Ui::Form ui;
 };
 
