@@ -69,6 +69,7 @@ public:
 			this, SLOT(stockRequestFinished(int,bool)));
 		ui.comboBoxContent->setCurrentIndex(0);
 		ui.stackedWidget->setCurrentIndex(0);
+		ui.textEditStockError->hide();
 
 		menu = new QMenu(this);
 		actionMode0 = new QAction(tr("&Raw"), this);
@@ -298,8 +299,8 @@ private slots:
 
 		if (!error) {
 			QString data(http->readAll());
-			data = data.remove("\n");
-			QRegExp re("\\/\\/\\s*\\[\\s*\\{\\s*(\\\"([\\w.]+)\\\"\\s*:\\s*\\\"([\\w.,:\\-\\s]+)\\\"\\s*,?\\s*)+\\}\\s*\\]");
+			data = data.remove("\n").simplified();
+			QRegExp re("\\/\\/\\s*\\[\\s*\\{\\s*(\\\"([\\w.]+)\\\"\\s*:\\s*\\\"(.?[\\w.,:\\+\\-\\s]+)\\\"\\s*,?\\s*)+\\}\\s*\\]");
 
 			if (re.exactMatch(data)) {
 				data = data.remove(QRegExp("[\\/\\[\\]\\{\\}]"));
@@ -319,15 +320,19 @@ private slots:
 				QString time = QTime::currentTime().toString("H:mm:ss");
 				QString log = QString("%1: Stock value %2").arg(time).arg(value);
 				ui.labelStockStatus->setText(log);
+				ui.textEditStockError->hide();
 			} else {
 				QString time = QTime::currentTime().toString("H:mm:ss");
-				QString log = QString("%1: Invalid server response\n%2").arg(time).arg(data);
+				QString log = QString("%1: Invalid server response").arg(time);
 				ui.labelStockStatus->setText(log);
+				ui.textEditStockError->setText(data);
+				ui.textEditStockError->show();
 			}
 		} else {
 			QString time = QTime::currentTime().toString("H:mm:ss");
-			QString log = QString("%1: Error getting stock quote: %2").arg(time).arg(http->errorString());
+			QString log = QString("%1: Error getting stock quote:\n%2").arg(time).arg(http->errorString());
 			ui.labelStockStatus->setText(log);
+			ui.textEditStockError->hide();
 		}
 	}
 
@@ -481,6 +486,9 @@ private:
 		http->setProxy(ui.lineEditProxyHost->text(), ui.lineEditProxyPort->text().toInt());
 		http->setHost("finance.google.com");
 		http->get(QString("/finance/info?client=ig&q=%1:%2").arg(exchange).arg(stock));
+		//http://finance.google.com/finance/info?client=ig&q=CURRENCY:EURUSD
+		//// [ { "id": "-2001" ,"t" : "EURUSD" ,"e" : "CURRENCY" ,"l" : "1.2701" ,"l_cur" : "" ,"s": "0" ,"ltt":"" ,"lt" : "Jan 9, 10:45PM GMT" ,"c" : "-0.00900" ,"cp" : "-0.704" ,"ccol" : "chr" } ] 
+		////[{"id":"667416","t": "PHIA","e": "AMS","l" : "15.65","l_cur": "15.65","s": "0","ltt":"1:56PM CET","lt": "Jan 9, 1:56PM CET","c": "0.00","cp": "0.00","ccol": "chb"}]
 	}
 
 	NumledHandle handle;
