@@ -11,6 +11,7 @@
 #include <QHttp>
 #include <QMenu>
 #include <QMessageBox>
+#include <QSettings>
 #include <QSystemTrayIcon>
 #include <QTime>
 #include <QTimer>
@@ -61,7 +62,7 @@ class NumledGuiWindow : public QDialog
 
 public:
 	NumledGuiWindow(QWidget *parent = NULL)
-		: QDialog(parent), handle(NULL), offset(0), timer(NULL)
+		: QDialog(parent), handle(NULL), offset(0), settings("Sindel", "USBNumLED"), timer(NULL)
 	{
 		ui.setupUi(this);
 		http = new QHttp(this);
@@ -70,6 +71,34 @@ public:
 		ui.comboBoxContent->setCurrentIndex(0);
 		ui.stackedWidget->setCurrentIndex(0);
 		ui.textEditStockError->hide();
+
+		ui.lineEditText->blockSignals(true);
+		ui.lineEditText->setText(settings.value("Text").toString());
+		ui.lineEditText->blockSignals(false);
+
+		ui.horizontalSliderSpeed->blockSignals(true);
+		ui.horizontalSliderSpeed->setValue(settings.value("TextSpeed").toInt());
+		ui.horizontalSliderSpeed->blockSignals(false);
+
+		ui.lineEditExchange->blockSignals(true);
+		ui.lineEditExchange->setText(settings.value("Exchange").toString());
+		ui.lineEditExchange->blockSignals(false);
+
+		ui.lineEditStock->blockSignals(true);
+		ui.lineEditStock->setText(settings.value("Stock").toString());
+		ui.lineEditStock->blockSignals(false);
+
+		ui.lineEditProxyHost->blockSignals(true);
+		ui.lineEditProxyHost->setText(settings.value("ProxyHost").toString());
+		ui.lineEditProxyHost->blockSignals(false);
+
+		ui.lineEditProxyPort->blockSignals(true);
+		ui.lineEditProxyPort->setText(settings.value("ProxyPort").toString());
+		ui.lineEditProxyPort->blockSignals(false);
+
+		ui.lineEditTimeOffset->blockSignals(true);
+		ui.lineEditTimeOffset->setText(settings.value("TimeOffset").toString());
+		ui.lineEditTimeOffset->blockSignals(false);
 
 		menu = new QMenu(this);
 		actionMode0 = new QAction(tr("&Raw"), this);
@@ -250,21 +279,39 @@ private slots:
 		}
 	}
 
+	void on_lineEditText_textChanged(const QString &text)
+	{
+		settings.setValue("Text", text);
+	}
+
 	void on_horizontalSliderSpeed_valueChanged(int value)
 	{
 		timer->setInterval(1000 - int(1000 * powf(value / 1000.0f, 0.25f)));
+		settings.setValue("TextSpeed", value);
 	}
 
 	void on_lineEditExchange_textChanged(const QString &text)
 	{
-		Q_UNUSED(text);
 		timerStock();
+		settings.setValue("Exchange", text);
 	}
 
 	void on_lineEditStock_textChanged(const QString &text)
 	{
-		Q_UNUSED(text);
 		timerStock();
+		settings.setValue("Stock", text);
+	}
+
+	void on_lineEditProxyHost_textChanged(const QString &text)
+	{
+		timerStock();
+		settings.setValue("ProxyHost", text);
+	}
+
+	void on_lineEditProxyPort_textChanged(const QString &text)
+	{
+		timerStock();
+		settings.setValue("ProxyPort", text);
 	}
 
 	void on_pushButtonUpdateStock_clicked()
@@ -274,8 +321,8 @@ private slots:
 
 	void on_lineEditTimeOffset_textChanged(const QString &text)
 	{
-		Q_UNUSED(text);
 		timerTime();
+		settings.setValue("TimeOffset", text);
 	}
 
 	void timerText()
@@ -486,14 +533,12 @@ private:
 		http->setProxy(ui.lineEditProxyHost->text(), ui.lineEditProxyPort->text().toInt());
 		http->setHost("finance.google.com");
 		http->get(QString("/finance/info?client=ig&q=%1:%2").arg(exchange).arg(stock));
-		//http://finance.google.com/finance/info?client=ig&q=CURRENCY:EURUSD
-		//// [ { "id": "-2001" ,"t" : "EURUSD" ,"e" : "CURRENCY" ,"l" : "1.2701" ,"l_cur" : "" ,"s": "0" ,"ltt":"" ,"lt" : "Jan 9, 10:45PM GMT" ,"c" : "-0.00900" ,"cp" : "-0.704" ,"ccol" : "chr" } ] 
-		////[{"id":"667416","t": "PHIA","e": "AMS","l" : "15.65","l_cur": "15.65","s": "0","ltt":"1:56PM CET","lt": "Jan 9, 1:56PM CET","c": "0.00","cp": "0.00","ccol": "chb"}]
 	}
 
 	NumledHandle handle;
 	NumledState state;
 	int offset;
+	QSettings settings;
 	QTimer *timer;
 	QHttp *http;
 	Ui::Form ui;
