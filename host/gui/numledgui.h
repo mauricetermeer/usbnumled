@@ -372,7 +372,7 @@ private slots:
 				QString time = QTime::currentTime().toString("H:mm:ss");
 				QString log = QString("%1: Invalid server response").arg(time);
 				ui.labelStockStatus->setText(log);
-				ui.textEditStockError->setText(data);
+				ui.textEditStockError->setPlainText(data);
 				ui.textEditStockError->show();
 			}
 		} else {

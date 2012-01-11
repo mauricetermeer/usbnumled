@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>290</width>
-    <height>487</height>
+    <height>403</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -287,6 +287,18 @@
           </item>
           <item row="4" column="0" colspan="2">
            <widget class="QTextEdit" name="textEditStockError">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Maximum">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>16777215</width>
+              <height>75</height>
+             </size>
+            </property>
             <property name="readOnly">
              <bool>true</bool>
             </property>

@@ -38,9 +38,11 @@ NumledState numled_read(NumledHandle handle, int *result)
 {
 	NumledState state;
 	uint8_t buffer[BUFFER_SIZE];
+	int bytes_read;
+
 	memset(buffer, 0, sizeof(buffer));
 
-	int bytes_read =
+	bytes_read =
 		hid_get_feature_report(
 			(hid_device*)handle, buffer, BUFFER_SIZE
 		);
