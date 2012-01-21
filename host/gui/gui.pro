@@ -1,7 +1,7 @@
 TEMPLATE = app
-TARGET = 
+TARGET = USBNumLED
 DEPENDPATH += .
-INCLUDEPATH += . ../api /usr/include/libusb-1.0
+INCLUDEPATH += . ../api
 unix { INCLUDEPATH += /usr/include/libusb-1.0 }
 QT += network
 

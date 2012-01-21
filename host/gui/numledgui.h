@@ -375,11 +375,14 @@ private slots:
 				ui.textEditStockError->setPlainText(data);
 				ui.textEditStockError->show();
 			}
+
+			timer->setInterval(15 * 60 * 1000);
 		} else {
 			QString time = QTime::currentTime().toString("H:mm:ss");
 			QString log = QString("%1: Error getting stock quote:\n%2").arg(time).arg(http->errorString());
 			ui.labelStockStatus->setText(log);
 			ui.textEditStockError->hide();
+			timer->setInterval(30 * 1000);
 		}
 	}
 
